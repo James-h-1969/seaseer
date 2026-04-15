@@ -4,41 +4,59 @@ from .ResidualBlock import ResidualBlock
 
 
 class ResNet(nn.Module):
-    def __init__(self, num_classes=10):
-        super(ResNet, self).__init__()
-        self.in_channels = 64
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
+    def __init__(
+        self,
+        in_channels,
+        num_blocks,
+        hidden_channels,
+        num_classes=None,
+        stride=1,
+        kernel_size=3,
+    ):
+        super().__init__()
+        assert len(num_blocks) == len(hidden_channels)
+
+        self.conv1 = nn.Conv2d(
+            in_channels,
+            hidden_channels[0],
+            kernel_size=kernel_size,
+            stride=1,
+            padding=kernel_size // 2,
+            bias=False,
+        )
+        self.bn1 = nn.BatchNorm2d(hidden_channels[0])
         self.relu = nn.ReLU(inplace=True)
 
-        self.layer1 = self._make_layer(ResidualBlock, 64, 2, stride=1)
-        self.layer2 = self._make_layer(ResidualBlock, 128, 2, stride=1)
-        self.layer3 = self._make_layer(ResidualBlock, 256, 2, stride=1)
-        self.layer4 = self._make_layer(ResidualBlock, 512, 2, stride=1)
+        # build residual layers
+        layers = []
+        ch = hidden_channels[0]
+        for n_blocks, out_ch in zip(num_blocks, hidden_channels):
+            layers.append(self._make_layer(ch, out_ch, n_blocks, stride, kernel_size))
+            ch = out_ch
+        self.res_layers = nn.Sequential(*layers)
 
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512, num_classes)
+        # optional classification head
+        self.head = None
+        if num_classes is not None:
+            self.head = nn.Sequential(
+                nn.AdaptiveAvgPool2d((1, 1)),
+                nn.Flatten(),
+                nn.Linear(hidden_channels[-1], num_classes),
+            )
 
-    def _make_layer(self, block, out_channels, num_blocks, stride):
+    @staticmethod
+    def _make_layer(in_ch, out_ch, num_blocks, stride, kernel_size):
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
+        ch = in_ch
         for s in strides:
-            layers.append(block(self.in_channels, out_channels, s))
-            self.in_channels = out_channels
+            layers.append(ResidualBlock(ch, out_ch, stride=s, kernel_size=kernel_size))
+            ch = out_ch
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
-
-        out = self.avgpool(out)
-        out = out.view(out.size(0), -1)
-        out = self.fc(out)
-
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.res_layers(out)
+        if self.head is not None:
+            out = self.head(out)
         return out
