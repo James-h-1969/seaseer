@@ -1,0 +1,75 @@
+{
+  "name": "seaseer-dev",
+  "description": "SeaSeer thesis development — PyTorch neural ODE models for ocean/climate forecasting",
+  "prompt": "file://.kiro/prompts/seaseer-dev.md",
+  "tools": [
+    "fs_read",
+    "fs_write",
+    "execute_bash",
+    "grep",
+    "glob",
+    "code",
+    "knowledge",
+    "thinking",
+    "todo_list"
+  ],
+  "allowedTools": [
+    "fs_read",
+    "grep",
+    "glob",
+    "code",
+    "knowledge",
+    "thinking",
+    "todo_list"
+  ],
+  "toolsSettings": {
+    "fs_write": {
+      "allowedPaths": [
+        "seaseer/**",
+        "helper_models/**",
+        "tests/**",
+        "pyproject.toml",
+        ".pre-commit-config.yaml",
+        ".github/**"
+      ],
+      "deniedPaths": [
+        ".git/**",
+        ".venv/**",
+        "*.pth",
+        "data/**"
+      ]
+    },
+    "execute_bash": {
+      "allowedCommands": [
+        "uv run ruff check .",
+        "uv run ruff format --check .",
+        "uv run ruff format .",
+        "uv run ruff check --fix .",
+        "uv run pytest",
+        "uv run pytest -v",
+        "uv sync",
+        "uv add *",
+        "git status",
+        "git diff",
+        "git log --oneline -10"
+      ],
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://pyproject.toml",
+    "file://seaseer/README.md",
+    "file://.github/workflows/ci.yml",
+    "file://.pre-commit-config.yaml"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "uv run python --version && uv run ruff --version",
+        "description": "Show Python and ruff versions"
+      }
+    ]
+  },
+  "keyboardShortcut": "ctrl+shift+d",
+  "welcomeMessage": "Ready to work on SeaSeer. What are we building?"
+}

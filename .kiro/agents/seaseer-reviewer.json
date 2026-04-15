@@ -1,0 +1,49 @@
+{
+  "name": "seaseer-reviewer",
+  "description": "Code reviewer for SeaSeer — checks correctness, tensor shapes, ruff compliance, and ML best practices",
+  "prompt": "file://.kiro/prompts/seaseer-reviewer.md",
+  "tools": [
+    "fs_read",
+    "grep",
+    "glob",
+    "code",
+    "execute_bash",
+    "thinking"
+  ],
+  "allowedTools": [
+    "fs_read",
+    "grep",
+    "glob",
+    "code",
+    "thinking"
+  ],
+  "toolsSettings": {
+    "execute_bash": {
+      "allowedCommands": [
+        "uv run ruff check .",
+        "uv run ruff format --check .",
+        "uv run pytest",
+        "uv run pytest -v",
+        "git diff",
+        "git diff --staged",
+        "git log --oneline -10"
+      ],
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://pyproject.toml",
+    "file://.pre-commit-config.yaml",
+    "file://.github/workflows/ci.yml"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "git diff --stat HEAD~1",
+        "description": "Show recent changes for review context"
+      }
+    ]
+  },
+  "keyboardShortcut": "ctrl+shift+r",
+  "welcomeMessage": "Ready to review. Point me at the code."
+}
