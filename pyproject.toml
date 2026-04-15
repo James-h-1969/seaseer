@@ -12,8 +12,10 @@ select = ["E", "F", "I", "W"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--no-header -rN"
 
 [dependency-groups]
 dev = [
+    "pytest>=8.0",
     "ruff>=0.15.10",
 ]
