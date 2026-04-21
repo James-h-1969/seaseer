@@ -15,6 +15,8 @@ class ResidualBlock(nn.Module):
             bias=False,
         )
         self.bn1 = nn.BatchNorm2d(out_channels)
+
+        # Activation function (Leaky Relu)
         self.relu = nn.ReLU(inplace=True)
 
         self.conv2 = nn.Conv2d(
