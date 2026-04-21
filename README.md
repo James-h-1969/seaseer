@@ -46,6 +46,11 @@ cd seaseer
 make eval
 ```
 
+### Data Generation
+```bash
+
+```
+
 ## Project Structure
 
 ```
