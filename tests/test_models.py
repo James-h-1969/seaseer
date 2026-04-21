@@ -1,7 +1,7 @@
 import torch
 
-from helper_models.ResidualBlock import ResidualBlock
-from helper_models.ResidualNetwork import ResNet
+from helpers.models.ResidualBlock import ResidualBlock
+from helpers.models.ResidualNetwork import ResNet
 
 
 class TestResidualBlock:

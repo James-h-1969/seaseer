@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from helper_models.ResidualNetwork import ResNet
+from helpers.models.ResidualNetwork import ResNet
 
 
 class SeaSeer(nn.Module):
