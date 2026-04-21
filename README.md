@@ -17,30 +17,6 @@
 
 SeaSeer is a deep learning model that uses **Neural ODEs** to learn transport dynamics for spatiotemporal ocean/climate forecasting. It combines a convolutional velocity network with optional attention and emission (uncertainty) branches built on a ResNet backbone.
 
-## Architecture
-
-```
-Input State (B, C, H, W)
-        │
-        ▼
-┌───────────────────┐
-│   Velocity Net    │──── ResNet backbone
-│   (f_conv)        │
-└───────┬───────────┘
-        │  + γ · f_att (optional attention branch)
-        ▼
-┌───────────────────┐
-│   ODE Integrator  │──── learns transport dynamics
-└───────┬───────────┘
-        │
-        ├──▶ Prediction (B, out_channels, H, W)
-        │
-        ▼  (optional)
-┌───────────────────┐
-│  Emission Net     │──── uncertainty estimation (mean, std)
-└───────────────────┘
-```
-
 ## Getting Started
 
 ### Prerequisites
@@ -82,34 +58,5 @@ helper_models/
 ├── ResidualBlock.py      # Residual block module
 └── ResidualNetwork.py    # ResNet backbone
 tests/
-└── test_placeholder.py   # Test suite
+└── test.py               # Test suite
 ```
-
-## Development
-
-Pre-commit hooks run **Ruff** (lint + format) and **pytest** on every commit:
-
-```bash
-uv run pre-commit install
-```
-
-To run manually:
-
-```bash
-uv run ruff check .       # lint
-uv run ruff format .      # format
-uv run pytest             # test
-```
-
-## CI
-
-GitHub Actions runs on every push/PR to `main`:
-
-| Job    | Description              |
-|--------|--------------------------|
-| `lint` | Ruff check + format      |
-| `test` | pytest suite             |
-
-## License
-
-This project is part of an academic thesis.
