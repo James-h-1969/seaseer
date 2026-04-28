@@ -1,5 +1,8 @@
 """
-Script to generate all the required data for training and evaluating SeaSeer
+Script to generate all the required data for training and evaluating SeaSeer.
+
+To note: all data is stored in NetCDF4 format, a standard self describing scientific 
+data formatter. All data is from 1993-2018.
 """
 
 import logging
@@ -18,6 +21,13 @@ logging.basicConfig(
 
 OUTPUT_DIR = Path(__file__).parent / "raw"
 
+BOUNDARY_COORDS = {
+    "north": 20,
+    "south": 50,
+    "east": 110,
+    "west": 180
+}
+
 
 class Downloader(ABC):
     def __init__(self, name: str):
@@ -35,59 +45,6 @@ class ERA5Downloader(Downloader):
             "product_type": ["reanalysis"],
             "variable": ["surface_latent_heat_flux"],
             "year": [
-                "1940",
-                "1941",
-                "1942",
-                "1943",
-                "1944",
-                "1945",
-                "1946",
-                "1947",
-                "1948",
-                "1949",
-                "1950",
-                "1951",
-                "1952",
-                "1953",
-                "1954",
-                "1955",
-                "1956",
-                "1957",
-                "1958",
-                "1959",
-                "1960",
-                "1961",
-                "1962",
-                "1963",
-                "1964",
-                "1965",
-                "1966",
-                "1967",
-                "1968",
-                "1969",
-                "1970",
-                "1971",
-                "1972",
-                "1973",
-                "1974",
-                "1975",
-                "1976",
-                "1977",
-                "1978",
-                "1979",
-                "1980",
-                "1981",
-                "1982",
-                "1983",
-                "1984",
-                "1985",
-                "1986",
-                "1987",
-                "1988",
-                "1989",
-                "1990",
-                "1991",
-                "1992",
                 "1993",
                 "1994",
                 "1995",
@@ -173,7 +130,12 @@ class ERA5Downloader(Downloader):
             "time": ["00:00", "12:00"],
             "data_format": "grib",
             "download_format": "unarchived",
-            "area": [28, -130, -55, 110],
+            "area": [
+                BOUNDARY_COORDS["north"],
+                -BOUNDARY_COORDS["east"],
+                -BOUNDARY_COORDS["south"],
+                BOUNDARY_COORDS["west"]
+            ],
         }
         client = cdsapi.Client()
         client.retrieve(dataset, request).download()
@@ -202,7 +164,22 @@ class NOAAOISSTDownloader(Downloader):
 
 class CMEMSDownloader(Downloader):
     def download(self, dataset: str) -> None:
-        logging.info("NEED TO IMPLEMENT CMEMS")
+        import copernicusmarine
+        copernicusmarine.subset(
+            dataset_id=dataset[0],
+            variables=dataset[1],
+            # TODO: decide on boundary conditions
+            # minimum_longitude=BOUNDARY_COORDS["east"],
+            # maximum_longitude=-BOUNDARY_COORDS["west"],
+            # minimum_latitude=-BOUNDARY_COORDS["south"],
+            # maximum_latitude=BOUNDARY_COORDS["north"],
+            start_datetime="2022-01-01",
+            end_datetime="2026-01-31",
+            minimum_depth=0,
+            maximum_depth=10,
+            output_filename=f"CMEMS-{dataset[0]}.nc",
+            output_directory="data/copernicus-data",
+        )
 
 
 class OMEGA3DDownloader(Downloader):
@@ -214,23 +191,27 @@ def download_data():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     downloaders_with_dataset: list[tuple[Downloader, str]] = [
-        (ERA5Downloader("ERA5"), ""),
-        (ERA5Downloader("ERA5"), ""),
-        (ERA5Downloader("ERA5"), ""),
-        (ERA5Downloader("ERA5"), ""),
-        (NOAAOISSTDownloader("NOAA"), ""),
-        (CMEMSDownloader("CMEMS"), ""),
-        (CMEMSDownloader("CMEMS"), ""),
-        (CMEMSDownloader("CMEMS"), ""),
-        (CMEMSDownloader("CMEMS"), ""),
-        (OMEGA3DDownloader("OMEGA"), ""),
+        # (ERA5Downloader("ERA5"), ""), # Net longwave Radiation
+        # (ERA5Downloader("ERA5"), ""), # Net shortwave Radiation
+        # (ERA5Downloader("ERA5"), ""), # Sensible heat flux
+        # (ERA5Downloader("ERA5"), ""), # Latent heat flux
+        # (NOAAOISSTDownloader("NOAA"), "") # Sea Surface Temperature
+        (CMEMSDownloader("CMEMS"),
+         ["cmems_mod_glo_phy_anfc_merged-uv_PT1H-i", ["utotal", "vtotal"]]
+         ),  # Meridional, Zonal Ocean Current
+        (CMEMSDownloader("CMEMS"),
+         ["cmems_mod_glo_phy_anfc_0.083deg_P1D-m", ["mlotst", "tob"]]
+         ),  # Mixed layer depth, Temperature at bottom of floor
+        # (OMEGA3DDownloader("OMEGA"), ""), # Mixed layer depth
     ]
 
     threads = []
     for downloader, dataset in downloaders_with_dataset:
         thread = threading.Thread(target=downloader.download, args=(dataset,))
         threads.append(thread)
-        print(f"Making a thread to download the {downloader.name} {dataset} dataset")
+        print(
+            f"Making a thread for the {downloader.name} {dataset} dataset"
+        )
 
     for thread in threads:
         thread.start()
