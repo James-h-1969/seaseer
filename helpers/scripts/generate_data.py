@@ -1,8 +1,8 @@
 """
 Script to generate all the required data for training and evaluating SeaSeer.
 
-To note: all data is stored in NetCDF4 format, a standard self describing scientific 
-data formatter. All data is from 1993-2018.
+To note: all data is stored in NetCDF4 format, a standard self
+describing scientific data formatter. All data is from 1993-2018.
 """
 
 import logging
@@ -21,12 +21,7 @@ logging.basicConfig(
 
 OUTPUT_DIR = Path(__file__).parent / "raw"
 
-BOUNDARY_COORDS = {
-    "north": 20,
-    "south": 50,
-    "east": 110,
-    "west": 180
-}
+BOUNDARY_COORDS = {"north": 20, "south": 50, "east": 110, "west": 180}
 
 
 class Downloader(ABC):
@@ -134,7 +129,7 @@ class ERA5Downloader(Downloader):
                 BOUNDARY_COORDS["north"],
                 -BOUNDARY_COORDS["east"],
                 -BOUNDARY_COORDS["south"],
-                BOUNDARY_COORDS["west"]
+                BOUNDARY_COORDS["west"],
             ],
         }
         client = cdsapi.Client()
@@ -165,6 +160,7 @@ class NOAAOISSTDownloader(Downloader):
 class CMEMSDownloader(Downloader):
     def download(self, dataset: str) -> None:
         import copernicusmarine
+
         copernicusmarine.subset(
             dataset_id=dataset[0],
             variables=dataset[1],
@@ -180,6 +176,7 @@ class CMEMSDownloader(Downloader):
             output_filename=f"CMEMS-{dataset[0]}.nc",
             output_directory="data/copernicus-data",
         )
+        print("Finished downloading the CMEMs data")
 
 
 class OMEGA3DDownloader(Downloader):
@@ -196,12 +193,14 @@ def download_data():
         # (ERA5Downloader("ERA5"), ""), # Sensible heat flux
         # (ERA5Downloader("ERA5"), ""), # Latent heat flux
         # (NOAAOISSTDownloader("NOAA"), "") # Sea Surface Temperature
-        (CMEMSDownloader("CMEMS"),
-         ["cmems_mod_glo_phy_anfc_merged-uv_PT1H-i", ["utotal", "vtotal"]]
-         ),  # Meridional, Zonal Ocean Current
-        (CMEMSDownloader("CMEMS"),
-         ["cmems_mod_glo_phy_anfc_0.083deg_P1D-m", ["mlotst", "tob"]]
-         ),  # Mixed layer depth, Temperature at bottom of floor
+        (
+            CMEMSDownloader("CMEMS"),
+            ["cmems_mod_glo_phy_anfc_merged-uv_PT1H-i", ["utotal", "vtotal"]],
+        ),  # Meridional, Zonal Ocean Current
+        (
+            CMEMSDownloader("CMEMS"),
+            ["cmems_mod_glo_phy_anfc_0.083deg_P1D-m", ["mlotst", "tob"]],
+        ),  # Mixed layer depth, Temperature at bottom of floor
         # (OMEGA3DDownloader("OMEGA"), ""), # Mixed layer depth
     ]
 
@@ -209,17 +208,13 @@ def download_data():
     for downloader, dataset in downloaders_with_dataset:
         thread = threading.Thread(target=downloader.download, args=(dataset,))
         threads.append(thread)
-        print(
-            f"Making a thread for the {downloader.name} {dataset} dataset"
-        )
+        print(f"Making a thread for the {downloader.name} {dataset} dataset")
 
     for thread in threads:
         thread.start()
 
     for thread in threads:
         thread.join()
-
-    print(f"Downloading {len(threads)} datasets has finished.")
 
 
 if __name__ == "__main__":
