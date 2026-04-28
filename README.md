@@ -47,9 +47,11 @@ make eval
 ```
 
 ### Data Generation
+In order to generate the data for SeaSeer, the following command can be used:
 ```bash
-
+make generate_data
 ```
+To clarify, this data is for Oceania. 
 
 ## Project Structure
 

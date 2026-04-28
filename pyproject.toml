@@ -5,6 +5,7 @@ requires-python = ">=3.9"
 dependencies = [
     "beautifulsoup4>=4.12",
     "cdsapi>=0.7.7",
+    "copernicusmarine>=2.0",
     "torch>=2.0",
 ]
 

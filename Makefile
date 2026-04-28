@@ -7,4 +7,4 @@ eval:
 	uv run seaseer/eval.py
 
 generate_data:
-	uv run data/generate_data.py
+	uv run helpers/scripts/generate_data.py
