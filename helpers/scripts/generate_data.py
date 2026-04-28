@@ -179,11 +179,6 @@ class CMEMSDownloader(Downloader):
         print("Finished downloading the CMEMs data")
 
 
-class OMEGA3DDownloader(Downloader):
-    def download(self, dataset: str) -> None:
-        logging.info("NEED TO IMPLEMENT OMEGA")
-
-
 def download_data():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -201,7 +196,10 @@ def download_data():
             CMEMSDownloader("CMEMS"),
             ["cmems_mod_glo_phy_anfc_0.083deg_P1D-m", ["mlotst", "tob"]],
         ),  # Mixed layer depth, Temperature at bottom of floor
-        # (OMEGA3DDownloader("OMEGA"), ""), # Mixed layer depth
+        (
+            CMEMSDownloader("CMEMS (OMEGA3D)"),
+            ["cmems_obs-mob_glo_phy-uvw_nrt_0.25deg_P7D-i", ["wo"]],
+        ),  # Vertical Ocean Current
     ]
 
     threads = []

@@ -30,6 +30,7 @@ SeaSeer is a deep learning model that uses **Neural ODEs** to learn transport dy
 git clone git@github.com:James-h-1969/thesis.git
 cd thesis
 uv sync
+pre-commit install
 ```
 
 ### Training
