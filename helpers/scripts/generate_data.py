@@ -6,6 +6,7 @@ describing scientific data formatter. All data is from 1993-2018.
 """
 
 import logging
+import os
 import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -13,14 +14,13 @@ from typing import Generic, TypeVar
 
 import cdsapi
 import requests
-from bs4 import BeautifulSoup
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="[%(asctime)s] [%(threadName)-10s] %(levelname)s: %(message)s",
 )
 
-OUTPUT_DIR = Path(__file__).parent / "raw"
+OUTPUT_DIR = Path(__file__).parents[2] / "data"
 
 BOUNDARY_COORDS = {"north": -10, "south": -25, "east": 154, "west": 142}
 
@@ -38,127 +38,34 @@ class Downloader(ABC, Generic[T]):
 
 
 class ERA5Downloader(Downloader[str]):
-    def download(self, dataset: str) -> None:
-        logging.info("Downloading ERA5")
-        era5_dataset = "reanalysis-era5-single-levels"
-        request = {
-            "product_type": [
-                "reanalysis",
-            ],
-            "variable": [dataset],
-            "year": [
-                "1993",
-                "1994",
-                "1995",
-                "1996",
-                "1997",
-                "1998",
-                "1999",
-                "2000",
-                "2001",
-                "2002",
-                "2003",
-                "2004",
-                "2005",
-                "2006",
-                "2007",
-                "2008",
-                "2009",
-                "2010",
-                "2011",
-                "2012",
-                "2013",
-                "2014",
-                "2015",
-                "2016",
-                "2017",
-                "2018",
-            ],
-            "month": [
-                "01",
-                "02",
-                "03",
-                "04",
-                "05",
-                "06",
-                "07",
-                "08",
-                "09",
-                "10",
-                "11",
-                "12",
-            ],
-            "day": [
-                "01",
-                "02",
-                "03",
-                "04",
-                "05",
-                "06",
-                "07",
-                "08",
-                "09",
-                "10",
-                "11",
-                "12",
-                "13",
-                "14",
-                "15",
-                "16",
-                "17",
-                "18",
-                "19",
-                "20",
-                "21",
-                "22",
-                "23",
-                "24",
-                "25",
-                "26",
-                "27",
-                "28",
-                "29",
-                "30",
-                "31",
-            ],
-            "time": [
-                "00:00",
-                "01:00",
-                "02:00",
-                "03:00",
-                "04:00",
-                "05:00",
-                "06:00",
-                "07:00",
-                "08:00",
-                "09:00",
-                "10:00",
-                "11:00",
-                "12:00",
-                "13:00",
-                "14:00",
-                "15:00",
-                "16:00",
-                "17:00",
-                "18:00",
-                "19:00",
-                "20:00",
-                "21:00",
-                "22:00",
-                "23:00",
-            ],
-            "data_format": "netcdf",
-            "download_format": "unarchived",
-            "area": [
-                BOUNDARY_COORDS["north"],
-                BOUNDARY_COORDS["west"],
-                BOUNDARY_COORDS["south"],
-                BOUNDARY_COORDS["east"],
-            ],
-        }
+    START_YEAR = 1993
+    END_YEAR = 2018
 
+    def download(self, dataset: str) -> None:
+        logging.info("Downloading ERA5 variable: %s", dataset)
+        era5_dataset = "reanalysis-era5-single-levels"
         client = cdsapi.Client()
-        client.retrieve(era5_dataset, request).download()
+
+        for year in range(self.START_YEAR, self.END_YEAR + 1):
+            logging.info("ERA5 %s: requesting year %d", dataset, year)
+            request = {
+                "product_type": ["reanalysis"],
+                "variable": [dataset],
+                "year": [str(year)],
+                "month": [f"{m:02d}" for m in range(1, 13)],
+                "day": [f"{d:02d}" for d in range(1, 32)],
+                "time": [f"{h:02d}:00" for h in range(24)],
+                "data_format": "netcdf",
+                "download_format": "unarchived",
+                "area": [
+                    BOUNDARY_COORDS["north"],
+                    BOUNDARY_COORDS["west"],
+                    BOUNDARY_COORDS["south"],
+                    BOUNDARY_COORDS["east"],
+                ],
+            }
+            target = OUTPUT_DIR / f"era5_{dataset}_{year}.nc"
+            client.retrieve(era5_dataset, request).download(target)
 
 
 class NOAAOISSTDownloader(Downloader[str]):
@@ -166,20 +73,27 @@ class NOAAOISSTDownloader(Downloader[str]):
 
     def download(self, dataset: str) -> None:
         logging.info("Downloading NOAA dataset")
-        archive_url = self.BASE_URL + dataset
-        if not archive_url.endswith("/"):
-            archive_url += "/"
-        r = requests.get(archive_url)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "html.parser")
-        output_dir = OUTPUT_DIR / "noaa" / dataset
-        output_dir.mkdir(parents=True, exist_ok=True)
-        for link in soup.find_all("a")[1:]:
-            href = link["href"]
-            file_r = requests.get(archive_url + href)
-            file_r.raise_for_status()
-            with open(output_dir / href, "wb") as f:
-                f.write(file_r.content)
+        year = 1981
+
+        while year < 2019:
+            filename = f"sst.day.mean.{year}.nc"
+            url = f"https://downloads.psl.noaa.gov/Datasets/noaa.oisst.v2.highres/{filename}"
+
+            print(f"Starting download for {filename}...")
+
+            # stream=True prevents loading the entire 700MB file into memory at once
+            with requests.get(url, stream=True) as response:
+                # Check if the URL actually exists (status code 200)
+                response.raise_for_status()
+
+                with open(filename, "wb") as file:
+                    # Download in 8KB chunks
+                    for chunk in response.iter_content(chunk_size=8192):
+                        file.write(chunk)
+
+            print(f"Download complete! Saved as {os.path.abspath(filename)}")
+
+            year += 1
 
 
 class CMEMSDownloader(Downloader[list]):
@@ -198,7 +112,7 @@ class CMEMSDownloader(Downloader[list]):
             minimum_depth=0,
             maximum_depth=10,
             output_filename=f"CMEMS-{dataset[0]}.nc",
-            output_directory="data/copernicus-data",
+            output_directory=str(OUTPUT_DIR / "copernicus"),
         )
         print("Finished downloading the CMEMs data")
 
@@ -217,7 +131,7 @@ def download_data():
         ),  # Net shortwave Radiation
         (ERA5Downloader("ERA5"), "mean_surface_latent_heat_flux"),  # Sensible heat flux
         (ERA5Downloader("ERA5"), "mean_surface_sensible_heat_flux"),  # Latent heat flux
-        # (NOAAOISSTDownloader("NOAA"), "") # Sea Surface Temperature
+        (NOAAOISSTDownloader("NOAA"), ""),  # Sea Surface Temperature
         (
             CMEMSDownloader("CMEMS"),
             ["cmems_mod_glo_phy_anfc_merged-uv_PT1H-i", ["utotal", "vtotal"]],

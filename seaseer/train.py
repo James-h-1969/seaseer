@@ -1,18 +1,20 @@
 import torch
+from dataloader import create_dataloader
 from model import SeaSeer
 
 LEARNING_RATE = 0.001
 AMOUNT_OF_TRAINING_EPOCHS = 100
-
-
-def load_data() -> torch.utils.data.DataLoader:
-    """Function that pulls the required data into memory"""
-    return ""
+BATCH_SIZE = 8
 
 
 def train():
-    dataloader: torch.utils.data.DataLoader = load_data()
-    model = SeaSeer()
+    train_loader, val_loader, channel_names = create_dataloader(
+        batch_size=BATCH_SIZE,
+    )
+    in_channels = len(channel_names)
+    print(f"Loaded {in_channels} channels: {channel_names}")
+
+    model = SeaSeer(in_channels=in_channels, out_channels=in_channels)
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
     loss_fn = torch.nn.MSELoss()
 
@@ -24,7 +26,7 @@ def train():
         running_loss = 0.0
 
         model.train()
-        for i, (inputs, targets) in enumerate(dataloader):
+        for i, (inputs, targets) in enumerate(train_loader):
             inputs, targets = inputs.to(device), targets.to(device)
 
             optimizer.zero_grad()

@@ -48,11 +48,25 @@ make eval
 ```
 
 ### Data Generation
-In order to generate the data for SeaSeer, the following command can be used:
+
+Before downloading data, you need to set up credentials for the two data providers:
+
+1. **Copernicus Climate Data Store (ERA5)**: Register at [https://cds.climate.copernicus.eu](https://cds.climate.copernicus.eu), then create `~/.cdsapirc` with:
+   ```
+   url: https://cds.climate.copernicus.eu/api
+   key: <your-api-key>
+   ```
+
+2. **Copernicus Marine (CMEMS)**: Register at [https://data.marine.copernicus.eu/register](https://data.marine.copernicus.eu/register), then log in once:
+   ```bash
+   uv run copernicusmarine login
+   ```
+
+Then generate the data:
 ```bash
 make generate_data
 ```
-This data is currently for Oceania and covers the years 1993-2018 due to data constraints.
+This downloads data covering the Great Barrier Reef region (10°S–25°S, 142°E–154°E) from 1993–2018.
 
 ## Project Structure
 
