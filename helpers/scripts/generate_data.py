@@ -9,6 +9,7 @@ import logging
 import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any
 
 import cdsapi
 import requests
@@ -21,7 +22,7 @@ logging.basicConfig(
 
 OUTPUT_DIR = Path(__file__).parent / "raw"
 
-BOUNDARY_COORDS = {"north": 20, "south": 50, "east": 110, "west": 180}
+BOUNDARY_COORDS = {"north": -10, "south": -25, "east": 154, "west": 142}
 
 
 class Downloader(ABC):
@@ -36,15 +37,39 @@ class Downloader(ABC):
 class ERA5Downloader(Downloader):
     def download(self, dataset: str) -> None:
         logging.info("Downloading ERA5")
-        request: dict = {
-            "product_type": ["reanalysis"],
-            "variable": ["surface_latent_heat_flux"],
+        dataset = "reanalysis-era5-single-levels"
+        request = {
+            "product_type": [
+                "reanalysis",
+            ],
+            "variable": [dataset],
             "year": [
-                "2022",
-                "2023",
-                "2024",
-                "2025",
-                "2026",
+                "1993",
+                "1994",
+                "1995",
+                "1996",
+                "1997",
+                "1998",
+                "1999",
+                "2000",
+                "2001",
+                "2002",
+                "2003",
+                "2004",
+                "2005",
+                "2006",
+                "2007",
+                "2008",
+                "2009",
+                "2010",
+                "2011",
+                "2012",
+                "2013",
+                "2014",
+                "2015",
+                "2016",
+                "2017",
+                "2018",
             ],
             "month": [
                 "01",
@@ -93,15 +118,42 @@ class ERA5Downloader(Downloader):
                 "30",
                 "31",
             ],
-            "data_format": "grib",
+            "time": [
+                "00:00",
+                "01:00",
+                "02:00",
+                "03:00",
+                "04:00",
+                "05:00",
+                "06:00",
+                "07:00",
+                "08:00",
+                "09:00",
+                "10:00",
+                "11:00",
+                "12:00",
+                "13:00",
+                "14:00",
+                "15:00",
+                "16:00",
+                "17:00",
+                "18:00",
+                "19:00",
+                "20:00",
+                "21:00",
+                "22:00",
+                "23:00",
+            ],
+            "data_format": "netcdf",
             "download_format": "unarchived",
             "area": [
                 BOUNDARY_COORDS["north"],
-                -BOUNDARY_COORDS["east"],
-                -BOUNDARY_COORDS["south"],
                 BOUNDARY_COORDS["west"],
+                BOUNDARY_COORDS["south"],
+                BOUNDARY_COORDS["east"],
             ],
         }
+
         client = cdsapi.Client()
         client.retrieve(dataset, request).download()
 
@@ -134,11 +186,10 @@ class CMEMSDownloader(Downloader):
         copernicusmarine.subset(
             dataset_id=dataset[0],
             variables=dataset[1],
-            # TODO: decide on boundary conditions
-            # minimum_longitude=BOUNDARY_COORDS["east"],
-            # maximum_longitude=-BOUNDARY_COORDS["west"],
-            # minimum_latitude=-BOUNDARY_COORDS["south"],
-            # maximum_latitude=BOUNDARY_COORDS["north"],
+            minimum_longitude=BOUNDARY_COORDS["west"],
+            maximum_longitude=BOUNDARY_COORDS["east"],
+            minimum_latitude=BOUNDARY_COORDS["south"],
+            maximum_latitude=BOUNDARY_COORDS["north"],
             start_datetime="2022-01-01",
             end_datetime="2026-01-31",
             minimum_depth=0,
@@ -152,11 +203,17 @@ class CMEMSDownloader(Downloader):
 def download_data():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    downloaders_with_dataset: list[tuple[Downloader, str]] = [
-        # (ERA5Downloader("ERA5"), ""), # Net longwave Radiation
-        # (ERA5Downloader("ERA5"), ""), # Net shortwave Radiation
-        # (ERA5Downloader("ERA5"), ""), # Sensible heat flux
-        # (ERA5Downloader("ERA5"), ""), # Latent heat flux
+    downloaders_with_dataset: list[tuple[Downloader, Any]] = [
+        (
+            ERA5Downloader("ERA5"),
+            "mean_surface_direct_short_wave_radiation_flux",
+        ),  # Net longwave Radiation
+        (
+            ERA5Downloader("ERA5"),
+            "mean_surface_downward_long_wave_radiation_flux",
+        ),  # Net shortwave Radiation
+        (ERA5Downloader("ERA5"), "mean_surface_latent_heat_flux"),  # Sensible heat flux
+        (ERA5Downloader("ERA5"), "mean_surface_sensible_heat_flux"),  # Latent heat flux
         # (NOAAOISSTDownloader("NOAA"), "") # Sea Surface Temperature
         (
             CMEMSDownloader("CMEMS"),
