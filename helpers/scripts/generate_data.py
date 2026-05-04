@@ -9,7 +9,7 @@ import logging
 import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
+from typing import Generic, TypeVar
 
 import cdsapi
 import requests
@@ -25,19 +25,22 @@ OUTPUT_DIR = Path(__file__).parent / "raw"
 BOUNDARY_COORDS = {"north": -10, "south": -25, "east": 154, "west": 142}
 
 
-class Downloader(ABC):
+T = TypeVar("T")
+
+
+class Downloader(ABC, Generic[T]):
     def __init__(self, name: str):
         self.name = name
 
     @abstractmethod
-    def download(self, dataset: str) -> None:
+    def download(self, dataset: T) -> None:
         pass
 
 
-class ERA5Downloader(Downloader):
+class ERA5Downloader(Downloader[str]):
     def download(self, dataset: str) -> None:
         logging.info("Downloading ERA5")
-        dataset = "reanalysis-era5-single-levels"
+        era5_dataset = "reanalysis-era5-single-levels"
         request = {
             "product_type": [
                 "reanalysis",
@@ -155,10 +158,10 @@ class ERA5Downloader(Downloader):
         }
 
         client = cdsapi.Client()
-        client.retrieve(dataset, request).download()
+        client.retrieve(era5_dataset, request).download()
 
 
-class NOAAOISSTDownloader(Downloader):
+class NOAAOISSTDownloader(Downloader[str]):
     BASE_URL = "https://noaadata.apps.nsidc.org/NOAA/"
 
     def download(self, dataset: str) -> None:
@@ -179,8 +182,8 @@ class NOAAOISSTDownloader(Downloader):
                 f.write(file_r.content)
 
 
-class CMEMSDownloader(Downloader):
-    def download(self, dataset: str) -> None:
+class CMEMSDownloader(Downloader[list]):
+    def download(self, dataset: list) -> None:
         import copernicusmarine
 
         copernicusmarine.subset(
@@ -203,7 +206,7 @@ class CMEMSDownloader(Downloader):
 def download_data():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    downloaders_with_dataset: list[tuple[Downloader, Any]] = [
+    downloaders_with_dataset: list[tuple[Downloader, str | list]] = [
         (
             ERA5Downloader("ERA5"),
             "mean_surface_direct_short_wave_radiation_flux",

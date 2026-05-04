@@ -52,7 +52,7 @@ In order to generate the data for SeaSeer, the following command can be used:
 ```bash
 make generate_data
 ```
-To clarify, this data is for Oceania. 
+This data is currently for Oceania and covers the years 1993-2018 due to data constraints.
 
 ## Project Structure
 
@@ -61,10 +61,15 @@ seaseer/
 ├── model.py              # SeaSeer model definition
 ├── train.py              # Training loop
 ├── eval.py               # Evaluation script
-└── Makefile              # Train/eval shortcuts
-helper_models/
-├── ResidualBlock.py      # Residual block module
-└── ResidualNetwork.py    # ResNet backbone
+└── README.md             # SeaSeer-specific docs
+helpers/
+├── models/
+│   ├── ResidualBlock.py  # Residual block module
+│   └── ResidualNetwork.py# ResNet backbone
+└── scripts/
+    └── generate_data.py  # Data download & generation
 tests/
-└── test.py               # Test suite
+├── conftest.py           # Shared test fixtures
+└── test_models.py        # Test suite
+Makefile                  # Train/eval/data shortcuts
 ```
