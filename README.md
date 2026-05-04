@@ -87,3 +87,6 @@ tests/
 └── test_models.py        # Test suite
 Makefile                  # Train/eval/data shortcuts
 ```
+
+## Thesis
+This is part of the work done by James Hocking for his thesis 'Seaseer: A Neural ODE for predicting Marine Heat Waves.
