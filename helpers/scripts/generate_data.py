@@ -37,35 +37,38 @@ class Downloader(ABC, Generic[T]):
         pass
 
 
-class ERA5Downloader(Downloader[str]):
+class ERA5Downloader(Downloader[list]):
     START_YEAR = 1993
     END_YEAR = 2018
 
-    def download(self, dataset: str) -> None:
-        logging.info("Downloading ERA5 variable: %s", dataset)
+    def download(self, dataset: list) -> None:
         era5_dataset = "reanalysis-era5-single-levels"
         client = cdsapi.Client()
 
-        for year in range(self.START_YEAR, self.END_YEAR + 1):
-            logging.info("ERA5 %s: requesting year %d", dataset, year)
-            request = {
-                "product_type": ["reanalysis"],
-                "variable": [dataset],
-                "year": [str(year)],
-                "month": [f"{m:02d}" for m in range(1, 13)],
-                "day": [f"{d:02d}" for d in range(1, 32)],
-                "time": [f"{h:02d}:00" for h in range(24)],
-                "data_format": "netcdf",
-                "download_format": "unarchived",
-                "area": [
-                    BOUNDARY_COORDS["north"],
-                    BOUNDARY_COORDS["west"],
-                    BOUNDARY_COORDS["south"],
-                    BOUNDARY_COORDS["east"],
-                ],
-            }
-            target = OUTPUT_DIR / f"era5_{dataset}_{year}.nc"
-            client.retrieve(era5_dataset, request).download(target)
+        for variable in dataset:
+            for year in range(self.START_YEAR, self.END_YEAR + 1):
+                target = OUTPUT_DIR / f"era5_{variable}_{year}.nc"
+                if target.exists():
+                    logging.info("ERA5 %s %d: already exists, skipping", variable, year)
+                    continue
+                logging.info("ERA5 %s: requesting year %d", variable, year)
+                request = {
+                    "product_type": ["reanalysis"],
+                    "variable": [variable],
+                    "year": [str(year)],
+                    "month": [f"{m:02d}" for m in range(1, 13)],
+                    "day": [f"{d:02d}" for d in range(1, 32)],
+                    "time": [f"{h:02d}:00" for h in range(24)],
+                    "data_format": "netcdf",
+                    "download_format": "unarchived",
+                    "area": [
+                        BOUNDARY_COORDS["north"],
+                        BOUNDARY_COORDS["west"],
+                        BOUNDARY_COORDS["south"],
+                        BOUNDARY_COORDS["east"],
+                    ],
+                }
+                client.retrieve(era5_dataset, request).download(target)
 
 
 class NOAAOISSTDownloader(Downloader[str]):
@@ -76,10 +79,10 @@ class NOAAOISSTDownloader(Downloader[str]):
         year = 1981
 
         while year < 2019:
-            filename = f"sst.day.mean.{year}.nc"
+            filename = f"data/NOAA/sst.day.mean.{year}.nc"
             url = f"https://downloads.psl.noaa.gov/Datasets/noaa.oisst.v2.highres/{filename}"
 
-            print(f"Starting download for {filename}...")
+            logging.info(f"Starting download for {filename}...")
 
             # stream=True prevents loading the entire 700MB file into memory at once
             with requests.get(url, stream=True) as response:
@@ -91,7 +94,7 @@ class NOAAOISSTDownloader(Downloader[str]):
                     for chunk in response.iter_content(chunk_size=8192):
                         file.write(chunk)
 
-            print(f"Download complete! Saved as {os.path.abspath(filename)}")
+            logging.info(f"Download complete! Saved as {os.path.abspath(filename)}")
 
             year += 1
 
@@ -114,7 +117,7 @@ class CMEMSDownloader(Downloader[list]):
             output_filename=f"CMEMS-{dataset[0]}.nc",
             output_directory=str(OUTPUT_DIR / "copernicus"),
         )
-        print("Finished downloading the CMEMs data")
+        logging.info("Finished downloading the CMEMs data")
 
 
 def download_data():
@@ -123,14 +126,13 @@ def download_data():
     downloaders_with_dataset: list[tuple[Downloader, str | list]] = [
         (
             ERA5Downloader("ERA5"),
-            "mean_surface_direct_short_wave_radiation_flux",
-        ),  # Net longwave Radiation
-        (
-            ERA5Downloader("ERA5"),
-            "mean_surface_downward_long_wave_radiation_flux",
-        ),  # Net shortwave Radiation
-        (ERA5Downloader("ERA5"), "mean_surface_latent_heat_flux"),  # Sensible heat flux
-        (ERA5Downloader("ERA5"), "mean_surface_sensible_heat_flux"),  # Latent heat flux
+            [
+                "mean_surface_direct_short_wave_radiation_flux",
+                "mean_surface_downward_long_wave_radiation_flux",
+                "mean_surface_latent_heat_flux",
+                "mean_surface_sensible_heat_flux",
+            ],
+        ),
         (NOAAOISSTDownloader("NOAA"), ""),  # Sea Surface Temperature
         (
             CMEMSDownloader("CMEMS"),
@@ -150,7 +152,7 @@ def download_data():
     for downloader, dataset in downloaders_with_dataset:
         thread = threading.Thread(target=downloader.download, args=(dataset,))
         threads.append(thread)
-        print(f"Making a thread for the {downloader.name} {dataset} dataset")
+        logging.info(f"Making a thread for the {downloader.name} {dataset} dataset")
 
     for thread in threads:
         thread.start()
